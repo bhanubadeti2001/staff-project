@@ -1,0 +1,138 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Global Safety Net (Pillar 0)
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Primitive Definitions (Phase 3)
+    // ===============================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Auth tokens NEVER contain custom claims. Fetch from 'users' collection.
+    // Bootstrap admin used for initial setup.
+    function isBootstrapAdmin() {
+      return isEmailVerified() && request.auth.token.email == "bhanunani886@gmail.com";
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    function isViewer() {
+      return isAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'viewer'
+      );
+    }
+
+    // ===============================================================
+    // Validation Blueprints (Pillar 2)
+    // ===============================================================
+    
+    function isValidStaff(data) {
+      return data.keys().hasAll(['id', 'name', 'role', 'shift_start', 'shift_end', 'week_off']) &&
+             data.keys().size() == 6 &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 20 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.role is string && data.role.size() <= 50 &&
+             data.shift_start is string && data.shift_start.matches('^\\d{2}:\\d{2}$') &&
+             data.shift_end is string && data.shift_end.matches('^\\d{2}:\\d{2}$') &&
+             data.week_off is string && data.week_off.size() <= 20;
+    }
+
+    function isValidAttendance(data) {
+      return data.keys().hasAll(['date', 'staff_id', 'status']) &&
+             data.keys().size() <= 8 &&
+             data.date is string && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+             data.staff_id is string && data.staff_id.size() <= 20 &&
+             data.status is string && data.status.size() <= 20 &&
+             (data.get('check_in', null) == null || (data.check_in is string && data.check_in.matches('^\\d{2}:\\d{2}$'))) &&
+             (data.get('break_start', null) == null || (data.break_start is string && data.break_start.matches('^\\d{2}:\\d{2}$'))) &&
+             (data.get('break_end', null) == null || (data.break_end is string && data.break_end.matches('^\\d{2}:\\d{2}$'))) &&
+             (data.get('check_out', null) == null || (data.check_out is string && data.check_out.matches('^\\d{2}:\\d{2}$'))) &&
+             (data.get('notes', null) == null || (data.notes is string && data.notes.size() <= 500));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.keys().size() == 3 &&
+             data.uid == request.auth.uid &&
+             data.email is string && data.email.size() <= 100 &&
+             data.role in ['admin', 'viewer'];
+    }
+
+    // ===============================================================
+    // Resource Rules (Pillar 1, 4, 8)
+    // ===============================================================
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && 
+                    (incoming().role == 'viewer' || (incoming().role == 'admin' && isBootstrapAdmin()));
+      
+      allow update: if (isAdmin() || (isSignedIn() && request.auth.uid == userId)) && 
+                    isValidUser(incoming()) && 
+                    // Prevent role escalation if not bootstrap admin
+                    (incoming().role == existing().role || isBootstrapAdmin()) &&
+                    incoming().uid == existing().uid &&
+                    incoming().email == existing().email;
+                    
+      allow delete: if isAdmin();
+    }
+
+    match /staff/{staffId} {
+      allow get: if isViewer() && isValidId(staffId);
+      allow list: if isViewer();
+      
+      allow create: if isAdmin() && isValidStaff(incoming()) && isValidId(staffId) && staffId == incoming().id;
+      allow update: if isAdmin() && isValidStaff(incoming()) && isValidId(staffId) && incoming().id == existing().id;
+      allow delete: if isAdmin() && isValidId(staffId);
+    }
+
+    match /attendance/{attendanceId} {
+      allow get: if isViewer() && isValidId(attendanceId);
+      allow list: if isViewer();
+      
+      allow create: if isViewer() && isValidAttendance(incoming()) && 
+                    isValidId(attendanceId) && 
+                    exists(/databases/$(database)/documents/staff/$(incoming().staff_id));
+                    
+      allow update: if isViewer() && isValidAttendance(incoming()) && 
+                    isValidId(attendanceId) &&
+                    incoming().staff_id == existing().staff_id &&
+                    incoming().date == existing().date;
+                    
+      allow delete: if isAdmin() && isValidId(attendanceId);
+    }
+  }
+}

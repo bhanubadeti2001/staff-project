@@ -1,0 +1,71 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "DM Mono", monospace;
+
+  --color-cream: #F5EFE4;
+  --color-espresso: #2C1810;
+  --color-ivy: #3D6B4A;
+  --color-caramel: #C8854A;
+  --color-latte: #D4A574;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-espresso);
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-serif);
+}
+
+.time-display {
+  font-family: var(--font-mono);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-cream);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-latte);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-caramel);
+}
+
+.foam-header {
+  background: linear-gradient(to bottom, rgba(212, 165, 116, 0.1), transparent);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 165, 116, 0.2);
+}
+
+.loading-overlay {
+  background: rgba(44, 24, 16, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-left-color: var(--color-latte);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}

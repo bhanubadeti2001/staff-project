@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "Staff": {
+      "title": "Staff",
+      "description": "Staff member details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique staff ID (e.g., TI001)" },
+        "name": { "type": "string", "description": "Full name of the staff member" },
+        "role": { "type": "string", "description": "Job role (e.g., FDM, Chef, Barista)" },
+        "shift_start": { "type": "string", "description": "Shift start time (HH:mm)" },
+        "shift_end": { "type": "string", "description": "Shift end time (HH:mm)" },
+        "week_off": { "type": "string", "description": "Day of the week for off" }
+      },
+      "required": ["id", "name", "role", "shift_start", "shift_end", "week_off"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Daily attendance record for a staff member",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Date of the record (YYYY-MM-DD)" },
+        "staff_id": { "type": "string", "description": "ID of the staff member" },
+        "check_in": { "type": "string", "description": "Check-in time (HH:mm)" },
+        "break_start": { "type": "string", "description": "Break start time (HH:mm)" },
+        "break_end": { "type": "string", "description": "Break end time (HH:mm)" },
+        "check_out": { "type": "string", "description": "Check-out time (HH:mm)" },
+        "status": { "type": "string", "description": "Attendance status (Present, Late, Absent, etc.)" },
+        "notes": { "type": "string", "description": "Optional notes" }
+      },
+      "required": ["date", "staff_id", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile and role",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "viewer"] }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "staff": {
+      "schema": "Staff",
+      "description": "Collection of staff members"
+    },
+    "attendance": {
+      "schema": "Attendance",
+      "description": "Collection of daily attendance records"
+    },
+    "users": {
+      "schema": "User",
+      "description": "Collection of user profiles"
+    }
+  }
+}
